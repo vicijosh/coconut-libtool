@@ -1,0 +1,567 @@
+import streamlit as st
+import streamlit.components.v1 as components
+import shifterator as sh
+from shifterator import ProportionShift
+import pandas as pd
+import re
+import nltk
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+import time
+import sys
+import json
+from tools import ai, runtime, sourceformat as sf, textprep, ui
+from collections import Counter
+import io
+#===config===
+st.set_page_config(
+    page_title="Coconut",
+    page_icon="🥥",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+runtime.ensure_nltk_data('wordnet', 'stopwords')
+
+ui.apply_app_style()
+
+ui.render_tool_menu()
+ui.render_page_header("Shifterator", "Compare word contribution shifts between two text groups.")
+with st.expander("Before you start", expanded = True):
+    tab1, tab2, tab3, tab4 = st.tabs(["Prologue", "Steps", "Requirements", "Download Visualization"])
+    with tab1:
+        st.write("Shifterator is a tool that helps compare two pieces of text by showing which words make them different, and in what way. It uses clear bar chart visuals, called word shift graphs, to explain these differences. You can use it to compare texts directly, analyze sentiment, or even as a more reliable alternative to word clouds.")
+        st.divider()
+        st.write('💡 The idea came from this:')
+        st.write('Gallagher, R.J., Frank, M.R., Mitchell, L. et al. (2021). Generalized Word Shift Graphs: A Method for Visualizing and Explaining Pairwise Comparisons Between Texts. EPJ Data Science, 10(4). https://doi.org/10.1140/epjds/s13688-021-00260-3')
+        
+    with tab2:
+        st.text("1. Put your file. Choose your preferred column to analyze.")
+        st.text("2. Choose your preferred method to count the words and decide how many top words you want to include or remove.")
+        st.text("3. Finally, you can visualize your data.")
+        st.error("This app includes lemmatization and stopwords. Currently, we only offer English words.", icon="💬")
+        
+    with tab3:
+        st.code("""
+        +----------------+------------------------+----------------------------------+
+        |     Source     |       File Type        |              Column              |
+        +----------------+------------------------+----------------------------------+
+        | Scopus         | Comma-separated values | Choose your preferred column     |
+        |                | (.csv)                 | that you have to analyze.        |
+        +----------------+------------------------|                                  |
+        | Web of Science | Tab delimited file     |                                  |
+        |                | (.txt)                 |                                  |
+        +----------------+------------------------|                                  |
+        | Lens.org       | Comma-separated values |                                  |
+        |                | (.csv)                 |                                  |
+        +----------------+------------------------|                                  |
+        | Dimensions     | Comma-separated values |                                  |
+        |                | (.csv)                 |                                  |
+        +----------------+------------------------|                                  |
+        | OpenAlex       | Comma-separated values |                                  |
+        |                | (.csv)                 |                                  |
+        +----------------+------------------------|                                  |
+        | Other          | .csv .xls .xlsx        |                                  |
+        +----------------+------------------------|                                  |
+        | Hathitrust     | .json                  |                                  |
+        +----------------+------------------------+----------------------------------+
+        """, language=None)    
+        
+    with tab4:
+        st.subheader(':blue[Shifterator]', anchor=False)
+        st.button('📥 Download Graph.', on_click="ignore")
+        st.text("Click Download Graph button.")  
+
+        st.divider()
+        st.subheader(':blue[Shifterator Dataframe]', anchor=False)
+        st.button('📥 Press to download result.', on_click="ignore")
+        st.text("Click the Download button to get the CSV result.") 
+    
+
+def reset_all():
+    st.cache_data.clear()
+
+@st.cache_data(ttl=3600)
+def get_ext(extype):
+    extype = uploaded_file.name
+    return extype
+
+#===upload file===
+@st.cache_data(ttl=3600)
+def upload(extype):
+    papers = pd.read_csv(uploaded_file)
+    #lens.org
+    if 'Publication Year' in papers.columns:
+               papers.rename(columns={'Publication Year': 'Year', 'Citing Works Count': 'Cited by',
+                                     'Publication Type': 'Document Type', 'Source Title': 'Source title'}, inplace=True)
+    
+    elif "About the data" in papers.columns[0]:
+        papers = sf.dim(papers)
+        col_dict = {'MeSH terms': 'Keywords',
+        'PubYear': 'Year',
+        'Times cited': 'Cited by',
+        'Publication Type': 'Document Type'
+        }
+        papers.rename(columns=col_dict, inplace=True)
+    
+    return papers
+
+@st.cache_data(ttl=3600)
+def conv_txt(extype):
+    if("PMID" in (uploaded_file.read()).decode()):
+        uploaded_file.seek(0)
+        papers = sf.medline(uploaded_file)
+        print(papers)
+        return papers
+    col_dict = {'TI': 'Title',
+            'SO': 'Source title',
+            'DE': 'Author Keywords',
+            'DT': 'Document Type',
+            'AB': 'Abstract',
+            'TC': 'Cited by',
+            'PY': 'Year',
+            'ID': 'Keywords Plus',
+            'rights_date_used': 'Year'}
+    uploaded_file.seek(0)
+    papers = pd.read_csv(uploaded_file, sep='\t')
+    if("htid" in papers.columns):
+        papers = sf.htrc(papers)
+    papers.rename(columns=col_dict, inplace=True)
+    print(papers)
+    return papers
+
+@st.cache_data(ttl=3600)
+def conv_json(extype):
+    col_dict={'title': 'title',
+    'rights_date_used': 'Year',
+    }
+
+    data = json.load(uploaded_file)
+    hathifile = data['gathers']
+    keywords = pd.DataFrame.from_records(hathifile)
+
+    keywords = sf.htrc(keywords)
+    keywords.rename(columns=col_dict,inplace=True)
+    return keywords
+
+@st.cache_data(ttl=3600)
+def conv_pub(extype):
+    if (get_ext(extype)).endswith('.tar.gz'):
+        bytedata = extype.read()
+        keywords = sf.readPub(bytedata)
+    elif (get_ext(extype)).endswith('.xml'):
+        bytedata = extype.read()
+        keywords = sf.readxml(bytedata)
+    return keywords
+
+@st.cache_data(ttl=3600)
+def readxls(file):
+    papers = pd.read_excel(uploaded_file, sheet_name=0, engine='openpyxl')
+    if "About the data" in papers.columns[0]:
+        papers = sf.dim(papers)
+        col_dict = {'MeSH terms': 'Keywords',
+        'PubYear': 'Year',
+        'Times cited': 'Cited by',
+        'Publication Type': 'Document Type'
+        }
+        papers.rename(columns=col_dict, inplace=True)
+    
+    return papers
+
+@st.cache_data(ttl=3600)
+def get_data(extype): 
+    df_col = sorted(papers.select_dtypes(include=['object']).columns.tolist())
+    list_title = [col for col in df_col if col.lower() == "title"]
+    abstract_pattern = re.compile(r'abstract', re.IGNORECASE)
+    list_abstract = [col for col in df_col if abstract_pattern.search(col)]
+
+    if all(col in df_col for col in list_title) and all(col in df_col for col in list_abstract):
+        selected_cols = list_abstract + list_title
+    elif all(col in df_col for col in list_title):
+        selected_cols = list_title
+    elif all(col in df_col for col in list_abstract):
+        selected_cols = list_abstract
+    else:
+        selected_cols = df_col
+
+    if not selected_cols:
+        selected_cols = df_col
+    
+    return df_col, selected_cols
+
+@st.cache_data(ttl=3600)
+def check_comparison(extype):
+    comparison = ['Word-to-word', 'Manual label']
+    
+    if any('year' in col.lower() for col in papers.columns):
+        comparison.append('Years')
+    if any('source title' in col.lower() for col in papers.columns):
+        comparison.append('Sources')
+
+    comparison.sort(reverse=False)
+    return comparison
+
+#===clean csv===
+@st.cache_data(ttl=3600, show_spinner=False)
+def clean_csv(extype):
+    return textprep.clean_frame_column(
+        papers,
+        ColCho,
+        stop_words=stopwords.words('english'),
+        remove_words=words_to_remove,
+        remove_punctuation=rem_punc,
+        remove_copyright=rem_copyright,
+        lemmatize=True,
+    )
+
+@st.cache_data(ttl=3600)
+def get_minmax(extype):
+    MIN = int(papers['Year'].min())
+    MAX = int(papers['Year'].max())
+    GAP = MAX - MIN
+    MID = round((MIN + MAX) / 2)
+    return MIN, MAX, GAP, MID
+
+@st.cache_data(ttl=3600)
+def running_shifterator(dict1, dict2):
+    try:
+        if method_shifts == 'Proportion Shifts':
+            proportion_shift = sh.ProportionShift(type2freq_1=dict1, type2freq_2=dict2)
+            ax = proportion_shift.get_shift_graph(system_names = ['Topic 1', 'Topic 2'], title='Proportion Shifts')     
+            
+        elif method_shifts == 'Shannon Entropy Shifts':
+            entropy_shift = sh.EntropyShift(type2freq_1=dict1,
+                                type2freq_2=dict2,
+                                base=2)
+            ax = entropy_shift.get_shift_graph(system_names = ['Topic 1', 'Topic 2'], title='Shannon Entropy Shifts')     
+            
+        elif method_shifts == 'Tsallis Entropy Shifts':
+            entropy_shift = sh.EntropyShift(type2freq_1=dict1,
+                                type2freq_2=dict2,
+                                base=2,
+                                alpha=0.8)
+            ax = entropy_shift.get_shift_graph(system_names = ['Topic 1', 'Topic 2'], title='Tsallis Entropy Shifts')     
+            
+        elif method_shifts == 'Kullback-Leibler Divergence Shifts':
+            kld_shift = sh.KLDivergenceShift(type2freq_1=dict1,
+                                 type2freq_2=dict2,
+                                 base=2)
+            ax = kld_shift.get_shift_graph(system_names = ['Topic 1', 'Topic 2'], title='Kullback-Leibler Divergence Shifts')     
+            
+        elif method_shifts == 'Jensen-Shannon Divergence Shifts':
+            jsd_shift = sh.JSDivergenceShift(type2freq_1=dict1,
+                                 type2freq_2=dict2,
+                                 weight_1=0.5,
+                                 weight_2=0.5,
+                                 base=2,
+                                 alpha=1)
+            ax = jsd_shift.get_shift_graph(system_names = ['Topic 1', 'Topic 2'], title='Jensen-Shannon Divergence Shifts')     
+
+        fig = ax.get_figure()
+        
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches='tight')
+        buf.seek(0)
+        
+        return fig, buf
+
+    except ValueError:
+        st.warning('Please check your data.', icon="⚠️")
+        st.stop()
+
+@st.cache_data(ttl=3600)
+def df2dict(df_1, df_2):
+    text1 = ' '.join(df_1.dropna().astype(str))
+    text2 = ' '.join(df_2.dropna().astype(str))
+                
+    text1_clean = re.sub(r'\d+', '', text1)
+    text2_clean = re.sub(r'\d+', '', text2)
+                
+    tokens1 = re.findall(r'\b\w+\b', text1_clean.lower())
+    tokens2 = re.findall(r'\b\w+\b', text2_clean.lower())
+                
+    type2freq_1 = {k: int(v) for k, v in Counter(tokens1).items()}
+    type2freq_2 = {k: int(v) for k, v in Counter(tokens2).items()}
+
+    return type2freq_1, type2freq_2
+
+@st.cache_data(ttl=3600)
+def dict_w2w(search_terms1, search_terms2):
+    selected_col = [ColCho]
+    dfs1 = pd.DataFrame()
+    for term in search_terms1:
+        dfs1 = pd.concat([dfs1, paper[paper[selected_col[0]].str.contains(r'\b' + term + r'\b', case=False, na=False)]], ignore_index=True)
+    dfs1['Topic'] = 'First Term'
+    dfs1 = dfs1.drop_duplicates()
+        
+    dfs2 = pd.DataFrame()
+    for term in search_terms2:
+        dfs2 = pd.concat([dfs2, paper[paper[selected_col[0]].str.contains(r'\b' + term + r'\b', case=False, na=False)]], ignore_index=True)
+    dfs2['Topic'] = 'Second Term'
+    dfs2 = dfs2.drop_duplicates()
+    
+    type2freq_1, type2freq_2 = df2dict(dfs1[selected_col[0]], dfs2[selected_col[0]])
+    
+    return type2freq_1, type2freq_2
+
+@st.cache_data(ttl=3600)
+def dict_sources(stitle1, stitle2):
+    selected_col = [ColCho]
+    dfs1 = paper[paper['Source title'].str.contains(stitle1, case=False, na=False)]
+    dfs1['Topic'] = stitle1
+    dfs2 = paper[paper['Source title'].str.contains(stitle2, case=False, na=False)]
+    dfs2['Topic'] = stitle2
+
+    type2freq_1, type2freq_2 = df2dict(dfs1[selected_col[0]], dfs2[selected_col[0]])
+    
+    return type2freq_1, type2freq_2
+
+@st.cache_data(ttl=3600)
+def dict_years(first_range, second_range):
+    selected_col = [ColCho]
+    first_filter_df = paper[(paper['Year'] >= first_range[0]) & (paper['Year'] <= first_range[1])].copy()
+    first_filter_df['Topic Range'] = 'First range'
+        
+    second_filter_df = paper[(paper['Year'] >= second_range[0]) & (paper['Year'] <= second_range[1])].copy()
+    second_filter_df['Topic Range'] = 'Second range'
+
+    type2freq_1, type2freq_2 = df2dict(first_filter_df[selected_col[0]], second_filter_df[selected_col[0]])
+    
+    return type2freq_1, type2freq_2
+    
+
+#===Read data===
+uploaded_file = st.file_uploader('Upload file', type=['csv', 'txt', 'json', 'tar.gz', 'xml', 'xls', 'xlsx'], on_change=reset_all, label_visibility="collapsed")
+
+if uploaded_file is not None:
+    try:
+        extype = get_ext(uploaded_file)
+    
+        if extype.endswith('.csv'):
+             papers = upload(extype) 
+        elif extype.endswith('.txt'):
+             papers = conv_txt(extype)
+        elif extype.endswith('.json'):
+            papers = conv_json(extype)
+        elif extype.endswith('.tar.gz') or extype.endswith('.xml'):
+            papers = conv_pub(uploaded_file)
+        elif extype.endswith(('.xls', '.xlsx')):
+            papers = readxls(uploaded_file)
+    
+        df_col, selected_cols = get_data(extype)
+        comparison = check_comparison(extype)
+    
+        #Menu
+        c1, c2, c3 = st.columns([4,0.1,4])
+        ColCho = c1.selectbox(
+                'Choose column to analyze',
+                (selected_cols), on_change=reset_all)
+    
+        c2.write('')
+    
+        compare = c3.selectbox(
+                'Type of comparison',
+                (comparison), on_change=reset_all)
+        
+        with st.expander("🧮 Show advance settings"):
+            y1, y2, y3 = st.columns([4,0.1,4])
+            t1, t2 = st.columns([3,3])
+            words_to_remove = y1.text_input('Input your text', on_change=reset_all, placeholder='Remove specific words. Separate words by semicolons (;)')
+            method_shifts = y3.selectbox("Choose preferred method",('Proportion Shifts','Shannon Entropy Shifts', 'Tsallis Entropy Shifts','Kullback-Leibler Divergence Shifts', 
+                                                                   'Jensen-Shannon Divergence Shifts'), on_change=reset_all)
+            rem_copyright = t1.toggle('Remove copyright statement', value=True, on_change=reset_all)
+            rem_punc = t2.toggle('Remove punctuation', value=False, on_change=reset_all)
+    
+        if method_shifts == 'Kullback-Leibler Divergence Shifts':
+            st.info('The Kullback-Leibler Divergence is only well-defined if every single word in the comparison text is also in the reference text.', icon="ℹ️")
+        
+        paper = clean_csv(extype)
+    
+        tab1, tab2, tab3 = st.tabs(["📈 Generate visualization", "📃 Reference", "📓 Recommended Reading"])
+    
+        with tab1:
+             #===visualization===
+            if compare == 'Word-to-word':
+                col1, col2, col3 = st.columns([4,0.1,4])
+                text1 = col1.text_input('First Term', on_change=reset_all, placeholder='put comma if you have more than one')
+                search_terms1 = [term.strip() for term in text1.split(",") if term.strip()]
+                col2.write('')
+                text2 = col3.text_input('Second Term', on_change=reset_all, placeholder='put comma if you have more than one')
+                search_terms2 = [term.strip() for term in text2.split(",") if term.strip()]
+                
+                type2freq_1, type2freq_2 = dict_w2w(search_terms1, search_terms2)
+                first_label = text1 or "First term"
+                second_label = text2 or "Second term"
+        
+                if not type2freq_1 and not type2freq_2:
+                    st.warning('We cannot find anything in your document.', icon="⚠️")
+                elif not type2freq_1:
+                    st.warning(f'We cannot find {text1} in your document.', icon="⚠️")
+                elif not type2freq_2:
+                    st.warning(f'We cannot find {text2} in your document.', icon="⚠️")
+                else:
+                    with st.spinner('Processing. Please wait until the visualization comes up'):
+                        fig, buf = running_shifterator(type2freq_1, type2freq_2)
+                        st.pyplot(fig)
+        
+            elif compare == 'Manual label':
+                col1, col2, col3 = st.columns(3)
+        
+                df_col_sel = sorted([col for col in paper.columns.tolist()])
+                     
+                column_selected = col1.selectbox(
+                    'Choose column',
+                    (df_col_sel), on_change=reset_all)
+        
+                list_words = paper[column_selected].dropna()  # remove NaN
+                list_words = [w for w in list_words if str(w).strip() != ""]  # remove empty strings
+                list_unique = sorted(set(list_words))
+                
+                if column_selected is not None:
+                    label1 = col2.selectbox(
+                        'Choose first label',
+                        (list_unique), on_change=reset_all)
+        
+                    default_index = 0 if len(list_unique) == 1 else 1
+                    label2 = col3.selectbox(
+                        'Choose second label',
+                        (list_unique), on_change=reset_all, index=default_index)
+        
+                filtered_df = paper[paper[column_selected].isin([label1, label2])].reset_index(drop=True)
+                
+                dfs1 = filtered_df[filtered_df[column_selected] == label1].reset_index(drop=True)
+                dfs2 = filtered_df[filtered_df[column_selected] == label2].reset_index(drop=True)
+
+                type2freq_1, type2freq_2 = df2dict(dfs1[ColCho], dfs2[ColCho])
+                first_label = label1
+                second_label = label2
+                
+                with st.spinner('Processing. Please wait until the visualization comes up'):
+                    fig, buf = running_shifterator(type2freq_1, type2freq_2)
+                    st.pyplot(fig)
+        
+            elif compare == 'Sources':
+                col1, col2, col3 = st.columns([4,0.1,4])
+        
+                unique_stitle = set()
+                unique_stitle.update(paper['Source title'].dropna())
+                list_stitle = sorted(list(unique_stitle))
+                     
+                stitle1 = col1.selectbox(
+                    'Choose first label',
+                    (list_stitle), on_change=reset_all)
+                col2.write('')
+                default_index = 0 if len(list_stitle) == 1 else 1
+                stitle2 = col3.selectbox(
+                    'Choose second label',
+                    (list_stitle), on_change=reset_all, index=default_index)
+        
+                type2freq_1, type2freq_2 = dict_sources(stitle1, stitle2)
+                first_label = stitle1
+                second_label = stitle2
+        
+                with st.spinner('Processing. Please wait until the visualization comes up'):
+                    fig, buf = running_shifterator(type2freq_1, type2freq_2)
+                    st.pyplot(fig)
+        
+            elif compare == 'Years':
+                col1, col2, col3 = st.columns([4,0.1,4])
+                
+                MIN, MAX, GAP, MID = get_minmax(extype)
+                if (GAP != 0):
+                    first_range = col1.slider('First Range', min_value=MIN, max_value=MAX, value=(MIN, MID), on_change=reset_all)
+                    col2.write('')
+                    second_range = col3.slider('Second Range', min_value=MIN, max_value=MAX, value=(MID, MAX), on_change=reset_all)
+                
+                    type2freq_1, type2freq_2 = dict_years(first_range, second_range)
+                    first_label = f"{first_range[0]}-{first_range[1]}"
+                    second_label = f"{second_range[0]}-{second_range[1]}"
+        
+                    with st.spinner('Processing. Please wait until the visualization comes up'):
+                        fig, buf = running_shifterator(type2freq_1, type2freq_2)
+                        st.pyplot(fig)
+
+                else:
+                    st.write('You only have data in ', (MAX))
+
+            if "buf" not in locals():
+                st.stop()
+
+            d1, d2 = st.columns(2)
+                
+            d1.download_button(
+                label="📥 Download Graph",
+                data=buf,
+                file_name="shifterator.png",
+                mime="image/png"
+            )
+
+            @st.cache_data(ttl=3600)
+            def shifts_dfs(type2freq_1, type2freq_2):
+                proportion_shift = ProportionShift(type2freq_1=type2freq_1, type2freq_2=type2freq_2)
+                
+                words = list(proportion_shift.types)
+                shift_scores = proportion_shift.get_shift_scores()
+                freq1 = proportion_shift.type2freq_1
+                freq2 = proportion_shift.type2freq_2
+
+                data = []
+                for word, score in shift_scores.items():
+                    data.append({
+                        'word': word,
+                        'freq_text1': proportion_shift.type2freq_1.get(word, 0),
+                        'freq_text2': proportion_shift.type2freq_2.get(word, 0),
+                        'shift_score': score
+                    })
+                
+                df_shift = pd.DataFrame(data)
+                df_shift = df_shift.sort_values('shift_score')
+                
+                return df_shift
+
+            shift_frame = shifts_dfs(type2freq_1, type2freq_2)
+            csv = shift_frame.to_csv(index=False).encode('utf-8')
+
+            d2.download_button(
+                "📥 Click to download result",
+                csv,
+                "shiftertor_dataframe.csv",
+                "text/csv")
+
+            ai_frame = (
+                shift_frame.assign(abs_shift=shift_frame["shift_score"].abs())
+                .sort_values("abs_shift", ascending=False)
+                .drop(columns=["abs_shift"])
+            )
+            payload = ai.table_payload(
+                "Shifterator",
+                "Word shift scores",
+                ai_frame,
+                metadata={
+                    "selected_column": ColCho,
+                    "comparison_type": compare,
+                    "first_group": first_label if "first_label" in locals() else "Topic 1",
+                    "second_group": second_label if "second_label" in locals() else "Topic 2",
+                    "shift_method": method_shifts,
+                    "first_group_total_terms": int(sum(type2freq_1.values())),
+                    "second_group_total_terms": int(sum(type2freq_2.values())),
+                },
+            )
+            ai.render_ai_insights(
+                "Shifterator",
+                payload,
+                f"shifterator_{compare.lower().replace(' ', '_')}",
+                "Explain which words contribute most to the difference between the two groups.",
+            )
+    
+        with tab2:
+            st.markdown('**Gallagher, R.J., Frank, M.R., Mitchell, L. et al. (2021). Generalized Word Shift Graphs: A Method for Visualizing and Explaining Pairwise Comparisons Between Texts. EPJ Data Science, 10(4).** https://doi.org/10.1140/epjds/s13688-021-00260-3')
+    
+        with tab3:
+            st.markdown('**Sánchez-Franco, M. J., & Rey-Tienda, S. (2023). The role of user-generated content in tourism decision-making: an exemplary study of Andalusia, Spain. Management Decision, 62(7).** https://doi.org/10.1108/md-06-2023-0966')
+            st.markdown('**Ipek Baris Schlicht, Fernandez, E., Chulvi, B., & Rosso, P. (2023). Automatic detection of health misinformation: a systematic review. Journal of Ambient Intelligence and Humanized Computing, 15.** https://doi.org/10.1007/s12652-023-04619-4')
+            st.markdown('**Torricelli, M., Falkenberg, M., Galeazzi, A., Zollo, F., Quattrociocchi, W., & Baronchelli, A. (2023). Hurricanes Increase Climate Change Conversations on Twitter. PLOS Climate, 2(11)** https://doi.org/10.1371/journal.pclm.0000277')
+         
+    except Exception as e:
+        st.error("Please ensure that your file is correct. Please contact us if you find that this is an error.", icon="🚨")
+        st.stop()
