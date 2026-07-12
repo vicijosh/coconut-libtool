@@ -1,10 +1,16 @@
 import re
+from functools import lru_cache
 
 from nltk.stem import WordNetLemmatizer
 
 
 PUNCTUATION_RE = r"[,:;.!?•=\-\(\)\[\]\{\}\"'`/\\]"
 QUOTE_RE = r"[\u2018\u2019\u201c\u201d]"
+
+
+@lru_cache(maxsize=1)
+def _lemmatizer():
+    return WordNetLemmatizer()
 
 
 def parse_remove_words(raw_words):
@@ -52,7 +58,7 @@ def clean_text_series(
         cleaned = cleaned.str.replace(remove_pattern, " ", regex=True).str.replace(r"\s+", " ", regex=True).str.strip()
 
     if lemmatize:
-        lemmatizer = WordNetLemmatizer()
+        lemmatizer = _lemmatizer()
         cleaned = cleaned.map(lambda text: _lemmatize_text(text, lemmatizer))
 
     return cleaned

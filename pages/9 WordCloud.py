@@ -79,6 +79,7 @@ def build_frequency(frame, column, count_mode, max_items, blocked_words, min_wor
     )
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def make_wordcloud_image(freq_frame, max_font, max_words, background, height, width, scale, colormap):
     freq_dict = frequency.frequency_dict(freq_frame)
     wordcloud = WordCloud(

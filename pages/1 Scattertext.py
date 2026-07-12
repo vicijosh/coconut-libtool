@@ -1,6 +1,5 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import scattertext as stx
 import pandas as pd
 import re
 import nltk
@@ -76,6 +75,12 @@ with st.expander("Before you start", expanded = True):
 
 def reset_all():
     st.cache_data.clear()
+
+
+@st.cache_resource(show_spinner=False)
+def scattertext_lib():
+    import scattertext as stx
+    return stx
 
 @st.cache_data(ttl=3600)
 def get_ext(extype):
@@ -224,6 +229,7 @@ def get_minmax(extype):
 @st.cache_data(ttl=3600)
 def running_scattertext(cat_col, catname, noncatname):
     try:
+        stx = scattertext_lib()
         corpus = stx.CorpusFromPandas(filtered_df,         
                                 category_col = cat_col,
                                 text_col = ColCho,
@@ -264,15 +270,17 @@ def running_scattertext(cat_col, catname, noncatname):
 @st.cache_data(ttl=3600)
 def df_w2w(search_terms1, search_terms2):
     selected_col = [ColCho]
-    dfs1 = pd.DataFrame()
-    for term in search_terms1:
-        dfs1 = pd.concat([dfs1, paper[paper[selected_col[0]].str.contains(r'\b' + term + r'\b', case=False, na=False)]], ignore_index=True)
+    def matching_rows(terms):
+        if not terms:
+            return paper.iloc[0:0].copy()
+        pattern = r'\b(?:' + '|'.join(re.escape(term) for term in terms) + r')\b'
+        return paper[paper[selected_col[0]].astype(str).str.contains(pattern, case=False, na=False, regex=True)].copy()
+
+    dfs1 = matching_rows(search_terms1)
     dfs1['Topic'] = 'First Term'
     dfs1 = dfs1.drop_duplicates()
         
-    dfs2 = pd.DataFrame()
-    for term in search_terms2:
-        dfs2 = pd.concat([dfs2, paper[paper[selected_col[0]].str.contains(r'\b' + term + r'\b', case=False, na=False)]], ignore_index=True)
+    dfs2 = matching_rows(search_terms2)
     dfs2['Topic'] = 'Second Term'
     dfs2 = dfs2.drop_duplicates()
     filtered_df = pd.concat([dfs1, dfs2], ignore_index=True)

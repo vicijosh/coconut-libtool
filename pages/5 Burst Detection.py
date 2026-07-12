@@ -237,10 +237,15 @@ def load_data(uploaded_file):
 def clean_data(df):
 
     years = list(range(YEAR[0],YEAR[1]+1))
-    df = df.loc[df['Year'].isin(years)]
+    df = df.loc[df['Year'].isin(years)].copy()
     
     # Preprocess text
-    df['processed'] = df.apply(lambda row: preprocess_text(f"{row.get(col_name, '')}"), axis=1)
+    df['processed'] = textprep.clean_text_series(
+        df[col_name].fillna(""),
+        stop_words=stopwords.words('english'),
+        remove_punctuation=True,
+        lemmatize=True,
+    )
 
     ngram_range = (1, xgram)
     
@@ -251,9 +256,13 @@ def clean_data(df):
         vectorizer = CountVectorizer(lowercase=False, tokenizer=lambda x: x.split(), ngram_range=ngram_range)
     X = vectorizer.fit_transform(df['processed'].tolist())
     
-    # Create DataFrame from the Document-Term Matrix (DTM)
-    dtm = pd.DataFrame(X.toarray(), columns=vectorizer.get_feature_names_out(), index=df['Year'].values)
-    yearly_term_frequency = dtm.groupby(dtm.index).sum()
+    # Keep the document-term matrix sparse so larger files do not balloon in memory.
+    dtm = pd.DataFrame.sparse.from_spmatrix(
+        X,
+        columns=vectorizer.get_feature_names_out(),
+        index=df['Year'].values,
+    )
+    yearly_term_frequency = dtm.groupby(level=0).sum()
 
     # excluded & included words
     if exc_inc == "Words to exclude":
@@ -264,7 +273,11 @@ def clean_data(df):
         included_words = [word.strip() for word in words_input.split(',')]   
         filtered_words = [word for word in yearly_term_frequency.columns if word in included_words]
 
+    if not filtered_words:
+        return pd.DataFrame(index=yearly_term_frequency.index), []
+
     top_words = yearly_term_frequency[filtered_words].sum().nlargest(top_n).index.tolist()
+    yearly_term_frequency = yearly_term_frequency[top_words].astype('int64')
     
     return yearly_term_frequency, top_words
 
@@ -300,8 +313,12 @@ def apply_burst_detection(top_words, data):
             bursts = burst_weights(bursts, r, d, p)
             all_bursts_list.append(bursts)
     
-            freq_data = yearly_term_frequency[word].reindex(years, fill_value=0)
+            freq_data = data[word].reindex(years, fill_value=0)
             all_freq_data[word] = freq_data
+
+    if not all_bursts_list:
+        all_bursts = pd.DataFrame(columns=['label', 'begin', 'end', 'weight'])
+        return all_bursts, all_freq_data, 0, math.ceil(top_n / 2)
 
     all_bursts = pd.concat(all_bursts_list, ignore_index=True)
 
