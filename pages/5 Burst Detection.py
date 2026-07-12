@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-import nltk
-import spacy
 from burst_detection import burst_detection, enumerate_bursts, burst_weights
 import matplotlib.pyplot as plt
 import os
@@ -16,7 +13,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.io as pio
 import sys
-from tools import ai, sourceformat as sf, ui
+from tools import ai, runtime, sourceformat as sf, textprep, ui
 #===config===
 st.set_page_config(
     page_title="Coconut",
@@ -26,6 +23,7 @@ st.set_page_config(
 )
 
 ui.apply_app_style()
+runtime.ensure_nltk_data('wordnet', 'stopwords')
 
 ui.render_tool_menu()
 ui.render_page_header("Burst Detection", "Find terms that rise sharply across time in your collection.")
@@ -88,9 +86,6 @@ with st.expander("Before you start", expanded = True):
 #===clear cache===
 def reset_all():
     st.cache_data.clear()
-
-# Initialize NLP model
-nlp = spacy.load("en_core_web_sm")
 
 @st.cache_data(ttl=3600)
 def upload(extype):
@@ -197,8 +192,14 @@ def get_column_name(df, possible_names):
 
 @st.cache_data(ttl=3600)
 def preprocess_text(text):
-    """Lemmatize and remove stopwords from text."""
-    return ' '.join([token.lemma_.lower() for token in nlp(text) if token.is_alpha and not token.is_stop])
+    """Lemmatize and remove stopwords from text without requiring compiled NLP models."""
+    cleaned = textprep.clean_text_series(
+        pd.Series([text]),
+        stop_words=stopwords.words('english'),
+        remove_punctuation=True,
+        lemmatize=True,
+    )
+    return cleaned.iloc[0] if not cleaned.empty else ""
 
 @st.cache_data(ttl=3600)
 def load_data(uploaded_file):

@@ -22,8 +22,6 @@ bitermplus
 tmplot
 tomotopy
 pipeline
-spacy==3.7.2
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz
 html2image
 umap-learn
 scattertext
@@ -38,7 +36,6 @@ git+https://github.com/faizhalas/shifterator
 datamapplot==0.4.2
 altair-nx
 rouge_score
-pytextrank
 openai
 transformers
 accelerate

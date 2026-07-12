@@ -29,7 +29,6 @@ import bitermplus as btm
 import tmplot as tmp
 import tomotopy
 import sys
-import spacy
 from html2image import Html2Image
 import os
 import time
@@ -136,6 +135,14 @@ def reset_biterm():
 
 def reset_all():
     st.cache_data.clear()
+
+@st.cache_resource(show_spinner=False)
+def optional_spacy_model_available():
+    try:
+        import en_core_web_sm  # noqa: F401
+    except Exception:
+        return False
+    return True
 
 #===avoiding deadlock===
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -301,9 +308,14 @@ if uploaded_file is not None:
                 bert_random_state = t2.number_input('random_state', value=42 , min_value=1, max_value=None, step=1, help="Please be aware we currently can't do the reproducibility on Bertopic.")
                 bert_n_components = t3.number_input('n_components', value=5 , min_value=1, max_value=None, step=1, help='The dimensionality of the embeddings after reducing them.')
                 bert_n_neighbors = t4.number_input('n_neighbors', value=15 , min_value=1, max_value=None, step=1, help='The number of neighboring sample points used when making the manifold approximation.')
+                embedding_options = ["all-MiniLM-L6-v2", "paraphrase-multilingual-MiniLM-L12-v2"]
+                if optional_spacy_model_available():
+                    embedding_options.append("en_core_web_sm")
                 bert_embedding_model = u1.radio(
                     "embedding_model", 
-                    ["all-MiniLM-L6-v2", "paraphrase-multilingual-MiniLM-L12-v2", "en_core_web_sm"], index=0, horizontal=True, help= 'Select paraphrase-multilingual if your documents are in a language other than English or are multilingual.')
+                    embedding_options, index=0, horizontal=True, help= 'Select paraphrase-multilingual if your documents are in a language other than English or are multilingual.')
+                if "en_core_web_sm" not in embedding_options:
+                    u1.caption("The spaCy English embedding option is not installed in this deployment.")
                 fine_tuning = u2.toggle("Use Fine-tuning")
                 if fine_tuning:
                     topic_labelling = u3.toggle("Automatic topic labelling")
@@ -566,7 +578,6 @@ if uploaded_file is not None:
             @st.cache_data(ttl=3600, show_spinner=False)
             def bertopic_vis(extype):
                 try:
-                    import en_core_web_sm
                     import openai
                     from bertopic import BERTopic
                     from bertopic.representation import (
@@ -593,6 +604,13 @@ if uploaded_file is not None:
                     embeddings = model.encode(topic_abs, show_progress_bar=True)
                     
                 elif bert_embedding_model == 'en_core_web_sm':
+                    try:
+                        import en_core_web_sm
+                    except Exception as exc:
+                        raise RuntimeError(
+                            "The spaCy English model is not installed in this deployment. "
+                            "Choose a MiniLM embedding model instead."
+                        ) from exc
                     nlp = en_core_web_sm.load(exclude=['tagger', 'parser', 'ner', 'attribute_ruler', 'lemmatizer'])
                     model = nlp
                     lang = 'en'
