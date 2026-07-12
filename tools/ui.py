@@ -577,26 +577,38 @@ def apply_app_style():
             }
         }
 
-        div[data-baseweb="tab-list"] {
-            display: flex;
-            width: 100%;
-            gap: 0.35rem;
+        div[data-baseweb="tab-list"],
+        [role="tablist"],
+        [data-testid="stTabs"] [data-baseweb="tab-list"] {
+            display: flex !important;
+            width: 100% !important;
+            gap: 0.35rem !important;
             border-bottom: 1px solid var(--coconut-border);
         }
 
-        button[data-baseweb="tab"] {
-            flex: 1 1 0;
-            min-width: 0;
-            min-height: 3.1rem;
-            padding: 0.65rem 0.75rem;
+        div[data-baseweb="tab-list"] > *,
+        [role="tablist"] > *,
+        [data-testid="stTabs"] [data-baseweb="tab-list"] > * {
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+        }
+
+        button[data-baseweb="tab"],
+        [role="tab"] {
+            flex: 1 1 0 !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            min-height: 3.1rem !important;
+            padding: 0.65rem 0.75rem !important;
             border-radius: 8px 8px 0 0;
             color: var(--coconut-muted);
             font-weight: 650;
-            justify-content: center;
-            text-align: center;
+            justify-content: center !important;
+            text-align: center !important;
         }
 
-        button[data-baseweb="tab"] p {
+        button[data-baseweb="tab"] p,
+        [role="tab"] p {
             width: 100%;
             overflow-wrap: anywhere;
             color: inherit;
@@ -605,13 +617,15 @@ def apply_app_style():
             white-space: normal;
         }
 
-        button[data-baseweb="tab"][aria-selected="true"] {
+        button[data-baseweb="tab"][aria-selected="true"],
+        [role="tab"][aria-selected="true"] {
             color: var(--coconut-primary);
             background:
                 linear-gradient(180deg, rgba(0, 113, 227, 0.10), rgba(0, 113, 227, 0.04));
         }
 
-        button[data-baseweb="tab"]:hover:not([aria-selected="true"]) {
+        button[data-baseweb="tab"]:hover:not([aria-selected="true"]),
+        [role="tab"]:hover:not([aria-selected="true"]) {
             background: var(--coconut-surface-hover);
             color: var(--coconut-text);
         }
@@ -859,13 +873,16 @@ def apply_app_style():
                 font-size: 1.7rem;
             }
 
-            div[data-baseweb="tab-list"] {
-                gap: 0.2rem;
+            div[data-baseweb="tab-list"],
+            [role="tablist"],
+            [data-testid="stTabs"] [data-baseweb="tab-list"] {
+                gap: 0.2rem !important;
             }
 
-            button[data-baseweb="tab"] {
-                min-height: 3.25rem;
-                padding: 0.55rem 0.35rem;
+            button[data-baseweb="tab"],
+            [role="tab"] {
+                min-height: 3.25rem !important;
+                padding: 0.55rem 0.35rem !important;
                 font-size: 0.86rem;
             }
 
