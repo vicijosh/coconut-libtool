@@ -64,6 +64,8 @@ with mt1:
 
 with mt2:
     tools = [
+        ("Research Radar", "Find related papers, possible solutions, evidence syntheses, and calls for more evidence.", "pages/22 Research Radar.py", None, "🛰️"),
+        ("Global Research Gap Radar", "Scan global scholarly metadata for under-researched and emerging areas.", "pages/23 Global Research Gap Radar.py", None, "🌐"),
         ("Scattertext", "Compare how language differs between two groups.", "pages/1 Scattertext.py", None, "🔀"),
         ("Topic Modeling", "Discover themes across abstracts and other text fields.", "pages/2 Topic Modeling.py", None, "🧩"),
         ("Bidirected Network", "Map two-way keyword relationships.", "pages/3 Bidirected Network.py", None, "🕸️"),
@@ -85,8 +87,6 @@ with mt2:
         ("AI Report Builder", "Turn notes and aggregate results into a polished report.", "pages/19 AI Report Builder.py", None, "📝"),
         ("AI Method Explainer", "Explain methods, settings, and interpretation caveats.", "pages/20 AI Method Explainer.py", None, "🧠"),
         ("Text Summarization", "Summarize abstracts, articles, notes, or selected text columns.", "pages/21 Text Summarization.py", None, "✂️"),
-        ("Research Radar", "Find related papers, possible solutions, evidence syntheses, and calls for more evidence.", "pages/22 Research Radar.py", None, "🛰️"),
-        ("Global Research Gap Radar", "Scan global scholarly metadata for under-researched and emerging areas.", "pages/23 Global Research Gap Radar.py", None, "🌐"),
     ]
 
     for row_start in range(0, len(tools), 3):

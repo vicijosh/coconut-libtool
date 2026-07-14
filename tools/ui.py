@@ -4,6 +4,8 @@ import streamlit as st
 
 
 TOOL_LINKS = [
+    ("pages/22 Research Radar.py", "Research Radar", "🛰️"),
+    ("pages/23 Global Research Gap Radar.py", "Global Research Gap Radar", "🌐"),
     ("pages/1 Scattertext.py", "Scattertext", "🔀"),
     ("pages/2 Topic Modeling.py", "Topic Modeling", "🧩"),
     ("pages/3 Bidirected Network.py", "Bidirected Network", "🕸️"),
@@ -25,8 +27,6 @@ TOOL_LINKS = [
     ("pages/19 AI Report Builder.py", "AI Report Builder", "📝"),
     ("pages/20 AI Method Explainer.py", "AI Method Explainer", "🧠"),
     ("pages/21 Text Summarization.py", "Text Summarization", "✂️"),
-    ("pages/22 Research Radar.py", "Research Radar", "🛰️"),
-    ("pages/23 Global Research Gap Radar.py", "Global Research Gap Radar", "🌐"),
 ]
 
 TOOL_THEMES = {
