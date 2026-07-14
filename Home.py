@@ -30,6 +30,8 @@ with mt1:
         ("Search by meaning", "Find records related to a concept even when the exact words differ.", "pages/16 Semantic Search.py", "🔍"),
         ("Explain results with AI", "Use aggregate results and careful caveats to interpret a dataset or method.", "pages/18 Ask Your Dataset.py", "💬"),
         ("Summarize text", "Create concise summaries, key points, and takeaways from abstracts or text columns.", "pages/21 Text Summarization.py", "✂️"),
+        ("Find related research", "Search open scholarly metadata for related papers, possible solutions, syntheses, and calls for evidence.", "pages/22 Research Radar.py", "🛰️"),
+        ("Find research gaps", "Scan worldwide publication patterns for thin evidence, emerging topics, and repeated calls for more research.", "pages/23 Global Research Gap Radar.py", "🌐"),
         ("Make quick visuals", "Create word clouds, histograms, and pie charts from selected columns.", "pages/9 WordCloud.py", "☁️"),
         ("Write a report", "Turn methods, findings, caveats, and optional dataset context into a report.", "pages/19 AI Report Builder.py", "📝"),
     ]
@@ -83,6 +85,8 @@ with mt2:
         ("AI Report Builder", "Turn notes and aggregate results into a polished report.", "pages/19 AI Report Builder.py", None, "📝"),
         ("AI Method Explainer", "Explain methods, settings, and interpretation caveats.", "pages/20 AI Method Explainer.py", None, "🧠"),
         ("Text Summarization", "Summarize abstracts, articles, notes, or selected text columns.", "pages/21 Text Summarization.py", None, "✂️"),
+        ("Research Radar", "Find related papers, possible solutions, evidence syntheses, and calls for more evidence.", "pages/22 Research Radar.py", None, "🛰️"),
+        ("Global Research Gap Radar", "Scan global scholarly metadata for under-researched and emerging areas.", "pages/23 Global Research Gap Radar.py", None, "🌐"),
     ]
 
     for row_start in range(0, len(tools), 3):
@@ -96,7 +100,7 @@ with mt3:
     option = st.selectbox(
         'Please choose....',
         ('Scattertext', 'Topic Modeling', 'Bidirected Network', 'Sunburst', 'Burst Detection', 'Keyword Stem', 'Sentiment Analysis', 'Shifterator', 'WordCloud', 'Histogram', 'Pie Chart',
-         'Corpus Overview', 'Data Cleaner', 'Bibliometric Overview', 'Named Entity Extraction', 'Semantic Search', 'Term/Keyword Evolution', 'Ask Your Dataset', 'AI Report Builder', 'AI Method Explainer', 'Text Summarization'))
+         'Corpus Overview', 'Data Cleaner', 'Bibliometric Overview', 'Named Entity Extraction', 'Semantic Search', 'Term/Keyword Evolution', 'Ask Your Dataset', 'AI Report Builder', 'AI Method Explainer', 'Text Summarization', 'Research Radar', 'Global Research Gap Radar'))
    
     new_tool_guides = {
         "Corpus Overview": ("Upload a dataset to inspect rows, columns, missing values, text fields, year coverage, and recommended next tools.", "Use this first when you are unsure which analysis page fits your file."),
@@ -109,6 +113,8 @@ with mt3:
         "AI Report Builder": ("Paste findings, methods, and caveats, then generate and download a Markdown report.", "Use this at the end of a project to turn outputs into a readable narrative."),
         "AI Method Explainer": ("Choose a method and ask AI to explain interpretation, limitations, and reporting language.", "Use this when teaching, writing methods sections, or checking your understanding."),
         "Text Summarization": ("Upload or sample text, choose columns, and create extractive summaries, key points, top terms, and optional AI-assisted takeaways.", "Use this when you need a quick digest of abstracts, articles, notes, survey responses, or other text fields."),
+        "Research Radar": ("Upload papers or abstracts, then search open scholarly metadata for related papers, possible solutions, syntheses, and calls for more evidence.", "Use this when you want to see how your uploaded corpus connects to the wider scholarly literature."),
+        "Global Research Gap Radar": ("Enter a research area or seed one from a corpus, then scan worldwide scholarly metadata for sparse, emerging, and evidence-seeking topics.", "Use this when you want to identify areas that may need more research before writing proposals, literature reviews, or project plans."),
     }
 
     if option in new_tool_guides:

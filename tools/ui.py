@@ -25,6 +25,8 @@ TOOL_LINKS = [
     ("pages/19 AI Report Builder.py", "AI Report Builder", "📝"),
     ("pages/20 AI Method Explainer.py", "AI Method Explainer", "🧠"),
     ("pages/21 Text Summarization.py", "Text Summarization", "✂️"),
+    ("pages/22 Research Radar.py", "Research Radar", "🛰️"),
+    ("pages/23 Global Research Gap Radar.py", "Global Research Gap Radar", "🌐"),
 ]
 
 TOOL_THEMES = {
@@ -51,6 +53,8 @@ TOOL_THEMES = {
     "AI Report Builder": ("#ff2d55", "#0071e3"),
     "AI Method Explainer": ("#bf5af2", "#30d158"),
     "Text Summarization": ("#0a84ff", "#ff9f0a"),
+    "Research Radar": ("#0071e3", "#ff375f"),
+    "Global Research Gap Radar": ("#30d158", "#5856d6"),
     "File Checker": ("#1b8f5a", "#0071e3"),
     "Coconut Libtool": ("#0071e3", "#30d158"),
 }
