@@ -1,4 +1,7 @@
+import datetime as dt
 import html
+import json
+import re
 
 import streamlit as st
 
@@ -6,6 +9,8 @@ import streamlit as st
 TOOL_LINKS = [
     ("pages/22 Research Radar.py", "Research Radar", "🛰️"),
     ("pages/23 Global Research Gap Radar.py", "Global Research Gap Radar", "🌐"),
+    ("pages/24 Words in Context.py", "Words in Context", "🔬"),
+    ("pages/25 Keyness Corpus Compare.py", "Keyness Corpus Compare", "🧭"),
     ("pages/1 Scattertext.py", "Scattertext", "🔀"),
     ("pages/2 Topic Modeling.py", "Topic Modeling", "🧩"),
     ("pages/3 Bidirected Network.py", "Bidirected Network", "🕸️"),
@@ -55,6 +60,8 @@ TOOL_THEMES = {
     "Text Summarization": ("#0a84ff", "#ff9f0a"),
     "Research Radar": ("#0071e3", "#ff375f"),
     "Global Research Gap Radar": ("#30d158", "#5856d6"),
+    "Words in Context": ("#00a887", "#64d2ff"),
+    "Keyness Corpus Compare": ("#ff9f0a", "#0a84ff"),
     "File Checker": ("#1b8f5a", "#0071e3"),
     "Coconut Libtool": ("#0071e3", "#30d158"),
 }
@@ -973,6 +980,94 @@ def render_page_header(title, subtitle=None, eyebrow="Coconut Libtool"):
         """,
         unsafe_allow_html=True,
     )
+    render_workflow_receipt(title, subtitle)
+
+
+def _safe_receipt_slug(text):
+    slug = re.sub(r"[^a-zA-Z0-9]+", "_", str(text).lower()).strip("_")
+    return slug or "coconut_workflow"
+
+
+def _receipt_jsonable(value):
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, (list, tuple, set)):
+        return [_receipt_jsonable(item) for item in list(value)[:25]]
+    if isinstance(value, dict):
+        return {str(key): _receipt_jsonable(item) for key, item in list(value.items())[:25]}
+    if hasattr(value, "shape"):
+        return f"{type(value).__name__} with shape {getattr(value, 'shape', '')}"
+    if hasattr(value, "name") and hasattr(value, "size"):
+        return f"{type(value).__name__}: {getattr(value, 'name', 'uploaded file')}"
+    return str(value)
+
+
+def _workflow_settings_snapshot():
+    hidden_terms = ("api_key", "apikey", "password", "secret", "token", "openai_key", "compatible_key")
+    rows = []
+    for key in sorted(st.session_state.keys(), key=str):
+        key_text = str(key)
+        lower_key = key_text.lower()
+        if any(term in lower_key for term in hidden_terms):
+            continue
+        if lower_key.startswith("_streamlit"):
+            continue
+        value = _receipt_jsonable(st.session_state[key])
+        try:
+            value_text = json.dumps(value, ensure_ascii=False, default=str)
+        except TypeError:
+            value_text = str(value)
+        value_text = value_text.replace("\n", " ").strip()
+        if len(value_text) > 420:
+            value_text = value_text[:420] + "..."
+        rows.append((key_text, value_text))
+    return rows[:80]
+
+
+def workflow_receipt_markdown(title, subtitle=None):
+    generated_at = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    theme = "Dark" if is_dark_mode() else "Light"
+    lines = [
+        "# Coconut Libtool Workflow Receipt",
+        "",
+        f"**Generated:** {generated_at}",
+        f"**Tool/Page:** {title}",
+        f"**Appearance:** {theme} mode",
+    ]
+    if subtitle:
+        lines.append(f"**Purpose:** {subtitle}")
+
+    settings = _workflow_settings_snapshot()
+    lines.extend(["", "## Captured Settings"])
+    if settings:
+        for key, value in settings:
+            lines.append(f"- **{key}:** {value}")
+    else:
+        lines.append("- No interactive settings were captured yet.")
+
+    lines.extend(
+        [
+            "",
+            "## Reproducibility Notes",
+            "- Re-run the workflow with the same source file, selected columns, filters, and model settings.",
+            "- This receipt does not include raw uploaded data or private API credentials.",
+            "- AI outputs are interpretive support; verify important claims against the source data, tables, charts, and domain knowledge.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_workflow_receipt(title, subtitle=None):
+    slug = _safe_receipt_slug(title)
+    with st.expander("Workflow receipt", expanded=False):
+        st.caption("Download a lightweight methods receipt for reproducing or explaining this analysis.")
+        st.download_button(
+            "Download workflow receipt",
+            workflow_receipt_markdown(title, subtitle),
+            f"{slug}_workflow_receipt.md",
+            "text/markdown",
+            key=f"{slug}_workflow_receipt_download",
+        )
 
 
 def themed_embedded_html(document):

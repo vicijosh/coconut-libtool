@@ -119,6 +119,7 @@ def recommend_tools(frame):
     text_cols = data_tools.text_columns(frame)
     keyword_cols = data_tools.keyword_columns(frame)
     numeric_cols = data_tools.numeric_columns(frame)
+    object_cols = frame.select_dtypes(include=["object"]).columns.tolist()
 
     recommendations.append(("Corpus Overview", "Profile rows, columns, missing values, and likely next steps.", "pages/12 Corpus Overview.py"))
     recommendations.append(("Data Cleaner", "Clean spacing, blank values, years, and duplicate records before analysis.", "pages/13 Data Cleaner.py"))
@@ -130,10 +131,13 @@ def recommend_tools(frame):
         recommendations.append(("Keywords Stem", f"Normalize keyword-like column `{keyword_cols[0]}` before network mapping.", "pages/6 Keywords Stem.py"))
         recommendations.append(("Bidirected Network", f"Build keyword relationships from `{keyword_cols[0]}`.", "pages/3 Bidirected Network.py"))
     if text_cols:
+        recommendations.append(("Words in Context", f"Inspect exact term usage around matches in `{text_cols[0]}`.", "pages/24 Words in Context.py"))
         recommendations.append(("Semantic Search", f"Search meaningfully across `{text_cols[0]}` or other text fields.", "pages/16 Semantic Search.py"))
         recommendations.append(("Text Summarization", f"Summarize `{text_cols[0]}` or other text fields into key takeaways.", "pages/21 Text Summarization.py"))
         recommendations.append(("Topic Modeling", f"Discover themes in `{text_cols[0]}` or another text field.", "pages/2 Topic Modeling.py"))
         recommendations.append(("WordCloud", f"Quickly see frequent words or terms from `{text_cols[0]}`.", "pages/9 WordCloud.py"))
+        if year_col or len(object_cols) > 1:
+            recommendations.append(("Keyness Corpus Compare", f"Compare language differences across groups or years using `{text_cols[0]}`.", "pages/25 Keyness Corpus Compare.py"))
     if numeric_cols:
         recommendations.append(("Histogram", f"Compare numeric/category values such as `{numeric_cols[0]}`.", "pages/10 Histogram.py"))
 
@@ -143,7 +147,7 @@ def recommend_tools(frame):
         if item[0] not in seen:
             unique.append(item)
             seen.add(item[0])
-    return unique[:8]
+    return unique[:10]
 
 
 def render_dataset_status(frame, source_label=None, expanded=False):

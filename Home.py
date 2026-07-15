@@ -32,6 +32,8 @@ with mt1:
         ("Summarize text", "Create concise summaries, key points, and takeaways from abstracts or text columns.", "pages/21 Text Summarization.py", "✂️"),
         ("Find related research", "Search open scholarly metadata for related papers, possible solutions, syntheses, and calls for evidence.", "pages/22 Research Radar.py", "🛰️"),
         ("Find research gaps", "Scan worldwide publication patterns for thin evidence, emerging topics, and repeated calls for more research.", "pages/23 Global Research Gap Radar.py", "🌐"),
+        ("Read words in context", "Search a term and inspect the sentences around each match.", "pages/24 Words in Context.py", "🔬"),
+        ("Compare corpora", "Find terms that distinguish two groups, years, labels, or sources.", "pages/25 Keyness Corpus Compare.py", "🧭"),
         ("Make quick visuals", "Create word clouds, histograms, and pie charts from selected columns.", "pages/9 WordCloud.py", "☁️"),
         ("Write a report", "Turn methods, findings, caveats, and optional dataset context into a report.", "pages/19 AI Report Builder.py", "📝"),
     ]
@@ -66,6 +68,8 @@ with mt2:
     tools = [
         ("Research Radar", "Find related papers, possible solutions, evidence syntheses, and calls for more evidence.", "pages/22 Research Radar.py", None, "🛰️"),
         ("Global Research Gap Radar", "Scan global scholarly metadata for under-researched and emerging areas.", "pages/23 Global Research Gap Radar.py", None, "🌐"),
+        ("Words in Context", "Search words or phrases and inspect nearby sentences for meaning and usage.", "pages/24 Words in Context.py", None, "🔬"),
+        ("Keyness Corpus Compare", "Compare two corpora and find distinctive terms with normalized keyness scores.", "pages/25 Keyness Corpus Compare.py", None, "🧭"),
         ("Scattertext", "Compare how language differs between two groups.", "pages/1 Scattertext.py", None, "🔀"),
         ("Topic Modeling", "Discover themes across abstracts and other text fields.", "pages/2 Topic Modeling.py", None, "🧩"),
         ("Bidirected Network", "Map two-way keyword relationships.", "pages/3 Bidirected Network.py", None, "🕸️"),
@@ -100,7 +104,7 @@ with mt3:
     option = st.selectbox(
         'Please choose....',
         ('Scattertext', 'Topic Modeling', 'Bidirected Network', 'Sunburst', 'Burst Detection', 'Keyword Stem', 'Sentiment Analysis', 'Shifterator', 'WordCloud', 'Histogram', 'Pie Chart',
-         'Corpus Overview', 'Data Cleaner', 'Bibliometric Overview', 'Named Entity Extraction', 'Semantic Search', 'Term/Keyword Evolution', 'Ask Your Dataset', 'AI Report Builder', 'AI Method Explainer', 'Text Summarization', 'Research Radar', 'Global Research Gap Radar'))
+         'Corpus Overview', 'Data Cleaner', 'Bibliometric Overview', 'Named Entity Extraction', 'Semantic Search', 'Term/Keyword Evolution', 'Ask Your Dataset', 'AI Report Builder', 'AI Method Explainer', 'Text Summarization', 'Research Radar', 'Global Research Gap Radar', 'Words in Context', 'Keyness Corpus Compare'))
    
     new_tool_guides = {
         "Corpus Overview": ("Upload a dataset to inspect rows, columns, missing values, text fields, year coverage, and recommended next tools.", "Use this first when you are unsure which analysis page fits your file."),
@@ -115,6 +119,8 @@ with mt3:
         "Text Summarization": ("Upload or sample text, choose columns, and create extractive summaries, key points, top terms, and optional AI-assisted takeaways.", "Use this when you need a quick digest of abstracts, articles, notes, survey responses, or other text fields."),
         "Research Radar": ("Upload papers or abstracts, then search open scholarly metadata for related papers, possible solutions, syntheses, and calls for more evidence.", "Use this when you want to see how your uploaded corpus connects to the wider scholarly literature."),
         "Global Research Gap Radar": ("Enter a research area or seed one from a corpus, then scan worldwide scholarly metadata for sparse, emerging, and evidence-seeking topics.", "Use this when you want to identify areas that may need more research before writing proposals, literature reviews, or project plans."),
+        "Words in Context": ("Upload text, enter a word or phrase, and inspect the matched sentence plus nearby context.", "Use this when counts are not enough and you need to understand how a term is actually being used."),
+        "Keyness Corpus Compare": ("Choose a text column, define two groups by category or year range, and rank the terms that distinguish each side.", "Use this when you want to compare language across groups, periods, sources, or labels."),
     }
 
     if option in new_tool_guides:
