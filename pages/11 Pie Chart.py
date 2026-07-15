@@ -37,8 +37,9 @@ with st.expander("Before you start", expanded=True):
             | Scopus         | Comma-separated values | Source title,                        |
             |                | (.csv)                 | Document Type,                       |
             +----------------+------------------------| Cited by, Year                       |
-            | Web of Science | Tab delimited file     |                                      |
-            |                | (.txt)                 |                                      |
+            | Web of Science | Tab delimited file     | Abstract, Author Keywords,          |
+            |                | (.txt)                 | Keywords Plus, Title, Year,         |
+            |                |                        | Source title, Document Type          |
             +----------------+------------------------+--------------------------------------+
             | Lens.org       | Comma-separated values | Publication Year,                    |
             |                | (.csv)                 | Publication Type,                    |

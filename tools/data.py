@@ -24,14 +24,74 @@ STANDARD_COLUMN_ALIASES = {
     "MeSH terms": "Keywords",
 }
 
+WOS_COLUMN_ALIASES = {
+    "PT": "Record Type",
+    "AU": "Authors",
+    "AF": "Author Full Names",
+    "TI": "Title",
+    "SO": "Source title",
+    "LA": "Language",
+    "DT": "Document Type",
+    "DE": "Author Keywords",
+    "ID": "Keywords Plus",
+    "AB": "Abstract",
+    "C1": "Addresses",
+    "C3": "Affiliations",
+    "RP": "Reprint Address",
+    "EM": "Emails",
+    "RI": "Researcher IDs",
+    "OI": "ORCIDs",
+    "FU": "Funding Agencies",
+    "FX": "Funding Text",
+    "CR": "Cited References",
+    "NR": "Cited Reference Count",
+    "TC": "Cited by",
+    "Z9": "Total Times Cited",
+    "PU": "Publisher",
+    "PI": "Publisher City",
+    "PA": "Publisher Address",
+    "SN": "ISSN",
+    "EI": "eISSN",
+    "J9": "Source Abbreviation",
+    "JI": "ISO Source Abbreviation",
+    "PD": "Publication Date",
+    "PY": "Year",
+    "VL": "Volume",
+    "IS": "Issue",
+    "BP": "Start Page",
+    "EP": "End Page",
+    "AR": "Article Number",
+    "DI": "DOI",
+    "DL": "DOI Link",
+    "PG": "Page Count",
+    "WC": "Web of Science Categories",
+    "WE": "Web of Science Index",
+    "SC": "Research Areas",
+    "DA": "Export Date",
+    "UT": "Accession Number",
+    "OA": "Open Access",
+}
+
+WOS_SIGNATURE_COLUMNS = {"AU", "TI", "SO", "PY", "UT"}
+
 TEXT_NAME_HINTS = ("abstract", "title", "description", "summary", "text", "keyword")
 KEYWORD_NAME_HINTS = ("keyword", "subject", "term", "mesh")
 
 
 def normalize_columns(frame):
     data = frame.copy()
+    data.columns = [str(column).lstrip("\ufeff").strip() for column in data.columns]
+    if _looks_like_web_of_science(data):
+        data.rename(columns=WOS_COLUMN_ALIASES, inplace=True)
     data.rename(columns=STANDARD_COLUMN_ALIASES, inplace=True)
     return data
+
+
+def _looks_like_web_of_science(frame):
+    columns = {str(column).lstrip("\ufeff").strip() for column in frame.columns}
+    signature_matches = len(columns.intersection(WOS_SIGNATURE_COLUMNS))
+    has_text_metadata = bool(columns.intersection({"AB", "DE", "ID", "DT"}))
+    return signature_matches >= 3 and has_text_metadata
 
 
 def read_upload(uploaded_file):
